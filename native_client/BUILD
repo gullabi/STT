@@ -76,7 +76,7 @@ cc_library(
     ],),
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fwrapv", "-fexceptions", "-fvisibility=hidden", "-fPIC",
+        "//conditions:default": ["-std=c++14", "-fwrapv", "-fexceptions", "-fvisibility=hidden", "-fPIC"],
     }),
     defines = ["KENLM_MAX_ORDER=6"],
     includes = ["kenlm"],
