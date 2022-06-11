@@ -4,6 +4,7 @@ load("@org_tensorflow//tensorflow:tensorflow.bzl", "lrt_if_needed")
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_static_framework")
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_c_module", "swift_library")
+load("@emsdk//emscripten_toolchain:wasm_rules.bzl", "wasm_cc_binary")
 
 
 genrule(
@@ -75,7 +76,7 @@ cc_library(
     ],),
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fwrapv", "-fvisibility=hidden"],
+        "//conditions:default": ["-std=c++14", "-fwrapv", "-fexceptions", "-fvisibility=hidden", "-fPIC",
     }),
     defines = ["KENLM_MAX_ORDER=6"],
     includes = ["kenlm"],
@@ -97,7 +98,11 @@ cc_binary(
             "-Wl,-rpath,$$ORIGIN/",
             "-Wl,-soname,libkenlm.so",
         ],
-    }),
+    }) + [
+        # Needed for EMSCRIPTEN dynamic linking
+        "-sSIDE_MODULE",
+        "-v"
+    ],
     linkshared = 1,
 )
 
@@ -114,7 +119,7 @@ cc_library(
         "kenlm/util/*.hh",
     ]),
     deps = [":kenlm_import"],
-    copts = ["-std=c++14"],
+    copts = ["-std=c++14", "-fexceptions"],
     defines = ["KENLM_MAX_ORDER=6"],
     includes = [".", "kenlm"],
 )
@@ -152,6 +157,7 @@ cc_library(
     ],
     includes = ["ctcdecode/third_party/flashlight"],
     deps = [":kenlm_lib"],
+    copts = ["-std=c++14", "-fexceptions"],
 )
 
 cc_library(
@@ -335,3 +341,26 @@ cc_binary(
     }),
     linkopts = DECODER_LINKOPTS,
 )
+
+cc_binary(
+    name = "stt_wasm",
+    srcs = [
+        "wasm/bindings.cc",
+    ],
+    deps = [":decoder"],
+    copts = select({
+        "//tensorflow:windows": ["/std:c++14"],
+        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv"],
+    }),
+    linkopts = DECODER_LINKOPTS + [
+        "-sMAIN_MODULE"
+    ],
+)
+
+wasm_cc_binary(
+    name = "stt_wasm_bindings",
+    cc_target = "stt_wasm",
+    simd = True,
+)
+
+# bazel build --workspace_status_command="bash native_client/bazel_workspace_status_cmd.sh" -c opt --copt="-D_GLIBCXX_USE_CXX11_ABI=0" //native_client:stt_wasm
