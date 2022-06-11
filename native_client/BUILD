@@ -346,7 +346,7 @@ cc_binary(
     srcs = [
         "wasm/bindings.cc",
     ],
-    deps = [":decoder"],
+    deps = [":decoder", ":coqui_stt_bundle"],
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
         "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv"],
