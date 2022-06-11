@@ -1,9 +1,18 @@
 
 #include <stdio.h>
 
-#include "emscripten.h"
+#include <emscripten/bind.h>
 #include "coqui-stt.h"
 
-int main() {
-    printf("Hello World\n");
+using namespace emscripten;
+
+float lerp(float a, float b, float t) {
+    return (1 - t) * a + t * b;
 }
+
+EMSCRIPTEN_BINDINGS(my_module) {
+    function("lerp", &lerp);
+}
+
+// TODO: STT_CreateStream
+

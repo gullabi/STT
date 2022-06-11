@@ -98,16 +98,15 @@ cc_binary(
             "-Wl,-rpath,$$ORIGIN/",
             "-Wl,-soname,libkenlm.so",
         ],
-    }) + [
-        # Needed for EMSCRIPTEN dynamic linking
-        "-sSIDE_MODULE",
-        "-v"
-    ],
+    }),
     linkshared = 1,
 )
 
 cc_import(
     name = "kenlm_import",
+    # Emscripten makes our life really hard when using dynamic linking. Let's support
+    # static linking for that case.
+    static_library = ":kenlm_static",
     shared_library = ":libkenlm.so",
     tags = ["manual"],
 )
@@ -353,13 +352,14 @@ cc_binary(
         "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv"],
     }),
     linkopts = DECODER_LINKOPTS + [
-        "-sMAIN_MODULE"
+        "--bind",
+        "-s WASM=1"
     ],
 )
 
 wasm_cc_binary(
     name = "stt_wasm_bindings",
-    cc_target = "stt_wasm",
+    cc_target = ":stt_wasm",
     simd = True,
 )
 
