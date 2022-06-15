@@ -76,7 +76,7 @@ cc_library(
     ],),
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fwrapv", "-fexceptions", "-fvisibility=hidden", "-fPIC"],
+        "//conditions:default": ["-std=c++14", "-fwrapv", "-fexceptions", "-fvisibility=hidden", "-fPIC", "-pthread"],
     }),
     defines = ["KENLM_MAX_ORDER=6"],
     includes = ["kenlm"],
@@ -156,7 +156,7 @@ cc_library(
     ],
     includes = ["ctcdecode/third_party/flashlight"],
     deps = [":kenlm_lib"],
-    copts = ["-std=c++14", "-fexceptions"],
+    copts = ["-std=c++14", "-fexceptions", "-pthread"],
 )
 
 cc_library(
@@ -167,7 +167,7 @@ cc_library(
     linkopts = DECODER_LINKOPTS,
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv"],
+        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv", "-pthread"],
     }),
 )
 
@@ -196,6 +196,7 @@ cc_library(
             "-fwrapv",
             "-Wno-sign-compare",
             "-fvisibility=hidden",
+            "-pthread",
         ],
     }),
     linkopts = lrt_if_needed() + select({
@@ -349,7 +350,7 @@ cc_binary(
     deps = [":decoder", ":coqui_stt_bundle"],
     copts = select({
         "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv"],
+        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv", "-pthread"],
     }),
     linkopts = DECODER_LINKOPTS + [
         "--bind",
