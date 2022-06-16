@@ -350,10 +350,7 @@ cc_binary(
         "wasm/bindings.cc",
     ],
     deps = [":decoder", ":coqui_stt_bundle"],
-    copts = select({
-        "//tensorflow:windows": ["/std:c++14"],
-        "//conditions:default": ["-std=c++14", "-fexceptions", "-fwrapv", "-pthread"],
-    }),
+    copts = ["-std=c++14", "-fno-exceptions", "-fwrapv", "-pthread"],
     linkopts = DECODER_LINKOPTS + [
         "--bind",
         "-s WASM=1",
@@ -363,7 +360,7 @@ cc_binary(
         # Allow to grow memory allocation when needed (for example for loading models).
         "-sALLOW_MEMORY_GROWTH",
         # test
-        "-sPTHREAD_POOL_SIZE=8",
+        "-sPTHREAD_POOL_SIZE=4",
         # This is a library, so no 'main' is expected.
         "--no-entry"
     ],
