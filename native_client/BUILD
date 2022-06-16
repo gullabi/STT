@@ -354,7 +354,11 @@ cc_binary(
     }),
     linkopts = DECODER_LINKOPTS + [
         "--bind",
-        "-s WASM=1"
+        "-s WASM=1",
+        # The missing symbosls are for XNNPACK QN8, which we disabled for tflite
+        # in a previous commit since it didn't work well with emscripten.
+        "-sERROR_ON_UNDEFINED_SYMBOLS=0",
+        "--no-entry"
     ],
 )
 

@@ -23,6 +23,12 @@
 
 **Coqui STT** (🐸STT) is a fast, open-source, multi-platform, deep-learning toolkit for training and deploying speech-to-text models. 🐸STT is battle tested in both production and research 🚀
 
+Temp: How to target WebAssembly
+-------------------------------
+
+1. Follow the `instructions until this point <https://stt.readthedocs.io/en/latest/BUILDING.html#compile-language-bindings>`_
+2. From within `STT/tensorflow`, run the following command: `bazel build --workspace_status_command="bash native_client/bazel_workspace_status_cmd.sh" -c opt --copt="-D_GLIBCXX_USE_CXX11_ABI=0" --copt=-pthread //native_client:stt_wasm_bindings --verbose_failures`
+
 🐸STT features
 ---------------
 
