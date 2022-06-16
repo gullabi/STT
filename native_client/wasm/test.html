@@ -1,24 +1,81 @@
 <!DOCTYPE html>
-<script src="stt_wasm.js"></script>
-<script>
-  (async () => {
-   /* // Wait for the library to initialize
-    const hw = await HelloWorld();
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>WASM Sample</title>
+  </head>
+  <body>
+    <script src="stt_wasm.js"></script>
+    <script>
+        var activeModel;
+        var audioContext;
 
-    // Prints the current time to the console
-    hw.LocalTime.now();
+        // https://stackoverflow.com/q/33738873/261698
+        function converFloat32ToInt16(buffer) {
+            return Int16Array.from(buffer, x => x * 32767);
+        }
 
-    // Returns a greeting for us to print
-    console.log(hw.Greet.sayHello());*/
-  })();
-  var Module = {
-      onRuntimeInitialized: function() {
-        console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+        function loadModel(modelFiles) {
+            console.log(`Loading models`, modelFiles);
 
-        var instance = new Module.Model("hello");
-        instance.incrementX();
-        instance.x; // 11
-      }
-    };
-</script>
-You're debugging the WASM target
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                activeModel = new Module.Model(new Uint8Array(reader.result));
+                const modelSampleRate = activeModel.getSampleRate();
+                console.log(`Model sample rate: ${modelSampleRate}`);
+
+                // Create an audio context for future processing.
+                audioContext = new AudioContext({
+                    // Use the model's sample rate so that the decoder will resample for us.
+                    sampleRate: modelSampleRate
+                });
+
+                // Now that a model is available, enable opening the audio file.
+                const audioInput = document.getElementById("audiopicker");
+                audioInput.addEventListener("change", (e) => processAudio(e.target.files[0]), false);
+                audioInput.disabled = false;
+            };
+            reader.readAsArrayBuffer(modelFiles[0]);
+        };
+
+        function processAudio(audioFile) {
+            console.log(`Loading audio file`, audioFile);
+
+            let reader = new FileReader();
+            reader.onload = (e) => {
+                audioContext.decodeAudioData(reader.result).then(decodedAudio => {
+                    const processedAudio = converFloat32ToInt16(decodedAudio);
+
+                    // Convert the `processedAudio` to something that can be passed
+                    // across the WASM boundaries.
+                    const toPass = new Module.VectorShort();
+                    processedAudio.forEach(e => toPass.push_back(e));
+
+                    console.debug(processedAudio, toPass);
+                    console.log(`Transcription: ${activeModel.speechToText(toPass)}`);
+                });
+            };
+            reader.readAsArrayBuffer(audioFile);
+        };
+
+        var Module = {
+            onRuntimeInitialized: function() {
+                // Now that we know the WASM module is ready, enable
+                // the file picker for the model.
+                const input = document.getElementById("modelpicker");
+                input.addEventListener("change", (e) => loadModel(e.target.files), false);
+                input.disabled = false;
+            }
+        };
+    </script>
+    <div>
+        <label for="modelpicker">Coqui TFLite Model file:</label>
+        <input type="file" name="modelpicker" id="modelpicker" disabled>
+
+        <br />
+
+        <label for="audiopicker">Audio sample file:</label>
+        <input type="file" name="audiopicker" id="audiopicker" disabled>
+    </div>
+  </body>
+</html>

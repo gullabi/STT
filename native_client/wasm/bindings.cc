@@ -6,9 +6,6 @@
 
 using namespace emscripten;
 
-float lerp(float a, float b, float t) {
-    return (1 - t) * a + t * b;
-}
 /*
 bool CreateStream() {
     StreamingState* ctx;
@@ -22,17 +19,34 @@ bool CreateStream() {
 class Model {
 public:
   Model(std::string buffer)
-    : buffer(buffer)
+    : state(nullptr)
+    , buffer(buffer)
   {
     loadModelFromBuffer();
   }
 
-  void incrementX() {
-    ++x;
+  ~Model() {
+    STT_FreeModel(state);
   }
 
-  int getX() const { return x; }
-  void setX(int x_) { x = x_; }
+  int getSampleRate() const {
+    return STT_GetModelSampleRate(this->state);
+  }
+
+  std::string speechToText(std::vector<short> audioBuffer) const {
+    char* tempResult = STT_SpeechToText(this->state, audioBuffer.data(), audioBuffer.size());
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    // We must manually free the string if something was returned to us.
+    std::string result = tempResult;
+    STT_FreeString(tempResult);
+    return result;
+  }
+
+  //void setX(int x_) { x = x_; }
 
   /*static std::string getStringFromInstance(const Model& instance) {
     return instance.y;
@@ -58,15 +72,11 @@ private:
 EMSCRIPTEN_BINDINGS(my_class_example) {
   class_<Model>("Model")
     .constructor<std::string>()
-    .function("incrementX", &Model::incrementX)
-    .property("x", &Model::getX, &Model::setX)
+    .function("getSampleRate", &Model::getSampleRate)
+    .function("speechToText", &Model::speechToText)
+    //.property("x", &Model::getX, &Model::setX)
     //.class_function("getStringFromInstance", &Model::getStringFromInstance)
     ;
+
+  register_vector<short>("VectorShort");
 }
-
-EMSCRIPTEN_BINDINGS(my_module) {
-    function("lerp", &lerp);
-}
-
-// TODO: STT_CreateStream
-

@@ -343,7 +343,9 @@ cc_binary(
 )
 
 cc_binary(
-    name = "stt_wasm",
+    # Note that the .js suffix is significant here. See the `-o`
+    # option at https://emscripten.org/docs/tools_reference/emcc.html
+    name = "stt_wasm.js",
     srcs = [
         "wasm/bindings.cc",
     ],
@@ -358,13 +360,16 @@ cc_binary(
         # The missing symbosls are for XNNPACK QN8, which we disabled for tflite
         # in a previous commit since it didn't work well with emscripten.
         "-sERROR_ON_UNDEFINED_SYMBOLS=0",
+        # Allow to grow memory allocation when needed (for example for loading models).
+        "-sALLOW_MEMORY_GROWTH",
+        # This is a library, so no 'main' is expected.
         "--no-entry"
     ],
 )
 
 wasm_cc_binary(
     name = "stt_wasm_bindings",
-    cc_target = ":stt_wasm",
+    cc_target = ":stt_wasm.js",
     simd = True,
 )
 
