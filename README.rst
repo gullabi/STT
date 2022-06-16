@@ -28,6 +28,8 @@ Temp: How to target WebAssembly
 
 1. Follow the `instructions until this point <https://stt.readthedocs.io/en/latest/BUILDING.html#compile-language-bindings>`_
 2. From within `STT/tensorflow`, run the following command: `bazel build --workspace_status_command="bash native_client/bazel_workspace_status_cmd.sh" -c opt --copt="-D_GLIBCXX_USE_CXX11_ABI=0" --copt=-pthread //native_client:stt_wasm_bindings --verbose_failures`
+3. Copy `tensorflow/bazel-bin/native_client/stt_wasm_bindings/*` to `native_client/wasm`.
+4. Serve `native_client/wasm/test.html` using a local webserver.
 
 🐸STT features
 ---------------
