@@ -14,6 +14,10 @@
   var Module = {
       onRuntimeInitialized: function() {
         console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+
+        var instance = new Module.Model("hello");
+        instance.incrementX();
+        instance.x; // 11
       }
     };
 </script>
