@@ -1,5 +1,6 @@
 
-#include <stdio.h>
+#include <iostream>
+#include <time.h>
 
 #include <emscripten/bind.h>
 #include "coqui-stt.h"
@@ -33,12 +34,21 @@ public:
     return STT_GetModelSampleRate(this->state);
   }
 
+  int enableExternalScorer(std::string scorerBuffer) const {
+    return STT_EnableExternalScorerFromBuffer(this->state, scorerBuffer.c_str(), scorerBuffer.size());
+  }
+
   std::string speechToText(std::vector<short> audioBuffer) const {
+    clock_t start = clock();
+    clock_t finish;
+    std::cout << "Start STT_SpeechToText" << std::endl;
     char* tempResult = STT_SpeechToText(this->state, audioBuffer.data(), audioBuffer.size());
     if (!tempResult) {
       // There was some error, return an empty string.
       return std::string();
     }
+    finish = clock();
+    std::cout << "Finished STT_SpeechToText " << (finish - start) / CLOCKS_PER_SEC << std::endl;
 
     // We must manually free the string if something was returned to us.
     std::string result = tempResult;
@@ -58,6 +68,8 @@ private:
   std::string buffer;
 
   void loadModelFromBuffer() {
+    std::cout << "Loading model" << std::endl;
+    std::cout << "clock per sec "<< CLOCKS_PER_SEC << std::endl;
     int ret = STT_CreateModelFromBuffer(this->buffer.c_str(), this->buffer.size(), &this->state);
     if (ret != STT_ERR_OK) {
       char* error = STT_ErrorCodeToErrorMessage(ret);
@@ -74,6 +86,7 @@ EMSCRIPTEN_BINDINGS(my_class_example) {
     .constructor<std::string>()
     .function("getSampleRate", &Model::getSampleRate)
     .function("speechToText", &Model::speechToText)
+    .function("enableExternalScorer", &Model::enableExternalScorer)
     //.property("x", &Model::getX, &Model::setX)
     //.class_function("getStringFromInstance", &Model::getStringFromInstance)
     ;
