@@ -359,7 +359,10 @@ cc_binary(
         "-sERROR_ON_UNDEFINED_SYMBOLS=0",
         # Allow to grow memory allocation when needed (for example for loading models).
         "-sALLOW_MEMORY_GROWTH",
-        # test
+        "-sMAXIMUM_MEMORY=4GB",
+        "-sMALLOC=emmalloc",
+        # We need to specify a threadpool size, otherwise TFLite will just do nothing
+        # and deadlock.
         "-sPTHREAD_POOL_SIZE=4",
         # This is a library, so no 'main' is expected.
         "--no-entry"
