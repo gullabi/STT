@@ -354,9 +354,6 @@ cc_binary(
     linkopts = DECODER_LINKOPTS + [
         "--bind",
         "-s WASM=1",
-        # The missing symbosls are for XNNPACK QN8, which we disabled for tflite
-        # in a previous commit since it didn't work well with emscripten.
-        "-sERROR_ON_UNDEFINED_SYMBOLS=0",
         # Allow to grow memory allocation when needed (for example for loading models).
         "-sALLOW_MEMORY_GROWTH",
         "-sMAXIMUM_MEMORY=4GB",
@@ -366,6 +363,11 @@ cc_binary(
         "-sPTHREAD_POOL_SIZE=4",
         # This is a library, so no 'main' is expected.
         "--no-entry",
+        # Experiencing problems? Uncomment the flags below to have better
+        # error messages and sanity checks.
+        # "-sASSERTIONS=2",
+        # "-g3",
+        # "-gsource-map",
     ],
 )
 
@@ -374,5 +376,3 @@ wasm_cc_binary(
     cc_target = ":stt_wasm.js",
     simd = True,
 )
-
-# bazel build --workspace_status_command="bash native_client/bazel_workspace_status_cmd.sh" -c opt --copt="-D_GLIBCXX_USE_CXX11_ABI=0" //native_client:stt_wasm

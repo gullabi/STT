@@ -47,6 +47,7 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 activeModel.enableExternalScorer(new Uint8Array(reader.result));
+                console.log("Scorer loaded");
             };
             reader.readAsArrayBuffer(scorerFile);
         };
