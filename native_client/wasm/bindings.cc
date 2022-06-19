@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#define NO_SOX
 #include "client.cc"
 #include "coqui-stt.h"
 
