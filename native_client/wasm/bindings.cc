@@ -122,8 +122,13 @@ class Model {
 
   int getModelBeamWidth() const { return STT_GetModelBeamWidth(this->state); }
 
-  int setModelBeamWidth(unsigned int width) const {
-    return STT_SetModelBeamWidth(this->state, width);
+  void setModelBeamWidth(unsigned int width) const {
+    int status = STT_SetModelBeamWidth(this->state, width);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not set model beam width: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
   void freeModel() const { return STT_FreeModel(this->state); }
@@ -138,23 +143,50 @@ class Model {
     }
   }
 
-  int disableExternalScorer() const {
-    return STT_DisableExternalScorer(this->state);
+  void disableExternalScorer() const {
+    int status = STT_DisableExternalScorer(this->state);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not set model beam width: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
-  int setScorerAlphaBeta(float alpha, float beta) const {
-    return STT_SetScorerAlphaBeta(this->state, alpha, beta);
+  void setScorerAlphaBeta(float alpha, float beta) const {
+    int status = STT_SetScorerAlphaBeta(this->state, alpha, beta);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not set scorer alpha beta: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
-  int addHotWord(const std::string& word, float boost) {
-    return STT_AddHotWord(this->state, word.c_str(), boost);
+  void addHotWord(const std::string& word, float boost) {
+    int status = STT_AddHotWord(this->state, word.c_str(), boost);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not add hot word: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
-  int eraseHotWord(const std::string& word) {
-    return STT_EraseHotWord(this->state, word.c_str());
+  void eraseHotWord(const std::string& word) {
+    int status = STT_EraseHotWord(this->state, word.c_str());
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not erase hot word: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
-  int clearHotWords() { return STT_ClearHotWords(this->state); }
+  void clearHotWords() {
+    int status = STT_ClearHotWords(this->state);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not clear hot words: " << error << std::endl;
+      STT_FreeString(error);
+    }
+  }
 
   std::string speechToText(std::vector<short> audioBuffer) const {
     char* tempResult =
