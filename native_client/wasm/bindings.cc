@@ -128,9 +128,14 @@ class Model {
 
   void freeModel() const { return STT_FreeModel(this->state); }
 
-  int enableExternalScorer(std::string scorerBuffer) const {
-    return STT_EnableExternalScorerFromBuffer(this->state, scorerBuffer.c_str(),
-                                              scorerBuffer.size());
+  void enableExternalScorer(std::string scorerBuffer) const {
+    int status = STT_EnableExternalScorerFromBuffer(this->state, scorerBuffer.c_str(),
+                                                    scorerBuffer.size());
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "Could not enable external scorer: " << error << std::endl;
+      STT_FreeString(error);
+    }
   }
 
   int disableExternalScorer() const {
