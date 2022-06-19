@@ -365,7 +365,7 @@ cc_binary(
         # and deadlock.
         "-sPTHREAD_POOL_SIZE=4",
         # This is a library, so no 'main' is expected.
-        "--no-entry"
+        "--no-entry",
     ],
 )
 

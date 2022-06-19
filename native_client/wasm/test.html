@@ -68,10 +68,10 @@
                     const now = Date.now();
                     const result = activeModel.speechToText(toPass);
                     const elapsedSeconds = (Date.now() - now)/1000;
-                    
+
                     document.getElementById("result").textContent = result;
                     console.log(`Transcription: ${result}`);
-                    
+
                     document.getElementById("elapsedSeconds").textContent = elapsedSeconds;
                     console.log(`Elapsed: ${elapsedSeconds} seconds`)
                 });
@@ -92,7 +92,7 @@
     <script src="build/stt_wasm.js"></script>
     <div>
         <label for="modelpicker">Coqui TFLite Model file:</label>
-        <input type="file" name="modelpicker" id="modelpicker">
+        <input type="file" name="modelpicker" id="modelpicker" disabled>
 
         <br />
 
