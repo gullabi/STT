@@ -7,15 +7,108 @@
 
 using namespace emscripten;
 
-/*
-bool CreateStream() {
-    StreamingState* ctx;
-    int status = STT_CreateStream(aCtx, &ctx);
-    if (status != STT_ERR_OK) {
-      return false;
+class Stream {
+ public:
+  Stream(StreamingState* streamingState)
+    : streamingState(streamingState) {}
+
+  void feedAudioContent(std::vector<short> audioBuffer) {
+    STT_FeedAudioContent(this->streamingState, audioBuffer.data(), audioBuffer.size());
+  }
+
+  std::string intermediateDecode() {
+    char* tempResult = STT_IntermediateDecode(this->streamingState);
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
     }
-    return true;
-}*/
+
+    // We must manually free the string if something was returned to us.
+    std::string result = tempResult;
+    STT_FreeString(tempResult);
+    return result;
+  }
+
+  // TODO: Actually return a wrapper to Metadata instead of a
+  // stringified JSON.
+  std::string intermediateDecodeWithMetadata(unsigned int numResults = 1) {
+    Metadata* tempResult =
+      STT_IntermediateDecodeWithMetadata(this->streamingState, numResults);
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    std::string jsonResult = MetadataToJSON(tempResult);
+    STT_FreeMetadata(tempResult);
+
+    return jsonResult;
+  }
+
+  std::string intermediateDecodeFlushBuffers() {
+    char* tempResult =
+      STT_IntermediateDecodeFlushBuffers(this->streamingState);
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    // We must manually free the string if something was returned to us.
+    std::string result = tempResult;
+    STT_FreeString(tempResult);
+    return result;
+  }
+
+  std::string intermediateDecodeWithMetadataFlushBuffers(unsigned int numResults = 1) {
+    Metadata* tempResult =
+      STT_IntermediateDecodeWithMetadataFlushBuffers(this->streamingState, numResults);
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    std::string jsonResult = MetadataToJSON(tempResult);
+    STT_FreeMetadata(tempResult);
+
+    return jsonResult;
+  }
+
+  std::string finishStream() {
+    char* tempResult = STT_FinishStream(this->streamingState);
+    // Regardless of the result, the stream will be deleted.
+    this->streamingState = nullptr;
+
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    // We must manually free the string if something was returned to us.
+    std::string result = tempResult;
+    STT_FreeString(tempResult);
+    return result;
+  }
+
+  std::string finishStreamWithMetadata(unsigned int numResults = 1) {
+    Metadata* tempResult =
+      STT_FinishStreamWithMetadata(this->streamingState, numResults);
+    // Regardless of the result, the stream will be deleted.
+    this->streamingState = nullptr;
+
+    if (!tempResult) {
+      // There was some error, return an empty string.
+      return std::string();
+    }
+
+    std::string jsonResult = MetadataToJSON(tempResult);
+    STT_FreeMetadata(tempResult);
+
+    return jsonResult;
+  }
+
+ private:
+  StreamingState* streamingState;
+};
 
 class Model {
  public:
@@ -72,6 +165,8 @@ class Model {
     return result;
   }
 
+  // TODO: Actually return a wrapper to Metadata instead of a
+  // stringified JSON.
   std::string speechToTextWithMetadata(std::vector<short> audioBuffer,
                                        unsigned int aNumResults) const {
     Metadata* tempResult = STT_SpeechToTextWithMetadata(
@@ -86,6 +181,19 @@ class Model {
     STT_FreeMetadata(tempResult);
 
     return jsonResult;
+  }
+
+  Stream* createStream() {
+    StreamingState* streamingState;
+    int status = STT_CreateStream(this->state, &streamingState);
+    if (status != STT_ERR_OK) {
+      char* error = STT_ErrorCodeToErrorMessage(status);
+      std::cerr << "createStream failed: " << error << std::endl;
+      STT_FreeString(error);
+      return nullptr;
+    }
+
+    return new Stream(streamingState);
   }
 
  private:
@@ -106,7 +214,7 @@ class Model {
 };
 
 // Binding code
-EMSCRIPTEN_BINDINGS(my_class_example) {
+EMSCRIPTEN_BINDINGS(coqui_ai_apis) {
   class_<Model>("Model")
       .constructor<std::string>()
       .function("getSampleRate", &Model::getSampleRate)
@@ -119,9 +227,21 @@ EMSCRIPTEN_BINDINGS(my_class_example) {
       .function("speechToText", &Model::speechToText)
       .function("speechToTextWithMetadata", &Model::speechToTextWithMetadata,
                 allow_raw_pointers())
+      .function("createStream", &Model::createStream, allow_raw_pointers())
       .function("enableExternalScorer", &Model::enableExternalScorer)
       .function("disableExternalScorer", &Model::disableExternalScorer)
       .function("setScorerAlphaBeta", &Model::setScorerAlphaBeta);
+
+  class_<Stream>("Stream")
+      .constructor<StreamingState*>()
+      .function("feedAudioContent", &Stream::feedAudioContent)
+      .function("intermediateDecode", &Stream::intermediateDecode)
+      .function("intermediateDecodeWithMetadata", &Stream::intermediateDecodeWithMetadata)
+      .function("intermediateDecodeFlushBuffers", &Stream::intermediateDecodeFlushBuffers)
+      .function("intermediateDecodeWithMetadataFlushBuffers",
+                &Stream::intermediateDecodeWithMetadataFlushBuffers)
+      .function("finishStream", &Stream::finishStream)
+      .function("finishStreamWithMetadata", &Stream::finishStreamWithMetadata);
 
   register_vector<short>("VectorShort");
 }
