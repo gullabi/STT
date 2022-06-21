@@ -1,12 +1,71 @@
 #include <emscripten/bind.h>
 
 #include <iostream>
+#include <string>
+#include <vector>
 
-#define NO_SOX
-#include "client.cc"
 #include "coqui-stt.h"
 
 using namespace emscripten;
+
+typedef struct TokenMetadataStub {
+    std::string text;
+    unsigned int timestep;
+    float start_time;
+
+    static TokenMetadataStub fromTokenMetadata(TokenMetadata tokenMetadata) {
+        return TokenMetadataStub{
+            tokenMetadata.text,
+            tokenMetadata.timestep,
+            tokenMetadata.start_time
+        };
+    }
+};
+
+typedef struct CandidateTranscriptStub {
+    std::vector<TokenMetadataStub> tokens;
+    double confidence;
+
+    static CandidateTranscriptStub fromCandidateTranscript(CandidateTranscript candidateTranscript) {
+        std::cout << "Converting from CandidateTranscript" << std::endl;
+        std::vector<TokenMetadataStub> tokens = std::vector<TokenMetadataStub>(candidateTranscript.num_tokens);
+
+        for (int i = 0; i < candidateTranscript.num_tokens; i++) {
+            const TokenMetadata candidateToken = candidateTranscript.tokens[i];
+            TokenMetadataStub token = TokenMetadataStub::fromTokenMetadata(candidateToken);
+            tokens[i] = token;
+        }
+
+
+        return CandidateTranscriptStub{
+            tokens,
+            candidateTranscript.confidence
+        };
+    }
+};
+
+typedef struct MetadataStub {
+    std::vector<CandidateTranscriptStub> transcripts;
+
+    static MetadataStub fromMetadata(Metadata* metadata) {
+        std::cout << "Converting from Metadata" << std::endl;
+        std::cout << "Number of transcripts: " << metadata->num_transcripts << std::endl;
+
+        std::vector<CandidateTranscriptStub> transcripts = std::vector<CandidateTranscriptStub>(metadata->num_transcripts);
+        for (int i = 0; i < metadata->num_transcripts; i++) {
+            std::cout << "Converting transcript " << i << std::endl;
+            const CandidateTranscript candidateTranscript = metadata->transcripts[i];
+            std::cout << "Transcript confidence " << candidateTranscript.confidence << std::endl;
+            CandidateTranscriptStub transcript = CandidateTranscriptStub::fromCandidateTranscript(candidateTranscript);
+            std::cout << "Converted transcript confidence " << transcript.confidence << std::endl;
+            transcripts[i] = transcript;
+        }
+
+        return MetadataStub{
+            transcripts
+        };
+    }
+} MetadataStub;
 
 class Stream {
  public:
@@ -30,20 +89,18 @@ class Stream {
     return result;
   }
 
-  // TODO: Actually return a wrapper to Metadata instead of a
-  // stringified JSON.
-  std::string intermediateDecodeWithMetadata(unsigned int numResults = 1) {
+  MetadataStub intermediateDecodeWithMetadata(unsigned int numResults = 1) {
     Metadata* tempResult =
       STT_IntermediateDecodeWithMetadata(this->streamingState, numResults);
     if (!tempResult) {
       // There was some error, return an empty string.
-      return std::string();
+      return MetadataStub{};
     }
 
-    std::string jsonResult = MetadataToJSON(tempResult);
+    MetadataStub metadata = MetadataStub::fromMetadata(tempResult);
     STT_FreeMetadata(tempResult);
 
-    return jsonResult;
+    return metadata;
   }
 
   std::string intermediateDecodeFlushBuffers() {
@@ -60,18 +117,18 @@ class Stream {
     return result;
   }
 
-  std::string intermediateDecodeWithMetadataFlushBuffers(unsigned int numResults = 1) {
+  MetadataStub intermediateDecodeWithMetadataFlushBuffers(unsigned int numResults = 1) {
     Metadata* tempResult =
       STT_IntermediateDecodeWithMetadataFlushBuffers(this->streamingState, numResults);
     if (!tempResult) {
       // There was some error, return an empty string.
-      return std::string();
+      return MetadataStub{};
     }
 
-    std::string jsonResult = MetadataToJSON(tempResult);
+    MetadataStub metadata = MetadataStub::fromMetadata(tempResult);
     STT_FreeMetadata(tempResult);
 
-    return jsonResult;
+    return metadata;
   }
 
   std::string finishStream() {
@@ -90,7 +147,7 @@ class Stream {
     return result;
   }
 
-  std::string finishStreamWithMetadata(unsigned int numResults = 1) {
+  MetadataStub finishStreamWithMetadata(unsigned int numResults = 1) {
     Metadata* tempResult =
       STT_FinishStreamWithMetadata(this->streamingState, numResults);
     // Regardless of the result, the stream will be deleted.
@@ -98,13 +155,13 @@ class Stream {
 
     if (!tempResult) {
       // There was some error, return an empty string.
-      return std::string();
+      return MetadataStub{};
     }
 
-    std::string jsonResult = MetadataToJSON(tempResult);
+    MetadataStub metadata = MetadataStub::fromMetadata(tempResult);
     STT_FreeMetadata(tempResult);
 
-    return jsonResult;
+    return metadata;
   }
 
  private:
@@ -203,22 +260,17 @@ class Model {
     return result;
   }
 
-  // TODO: Actually return a wrapper to Metadata instead of a
-  // stringified JSON.
-  std::string speechToTextWithMetadata(std::vector<short> audioBuffer,
+  MetadataStub speechToTextWithMetadata(std::vector<short> audioBuffer,
                                        unsigned int aNumResults) const {
     Metadata* tempResult = STT_SpeechToTextWithMetadata(
         this->state, audioBuffer.data(), audioBuffer.size(), aNumResults);
 
-    if (!tempResult) {
-      // There was some error, return an empty string.
-      return std::string();
-    }
-
-    std::string jsonResult = MetadataToJSON(tempResult);
+    std::cout << "Metadata num_transcripts: " << tempResult->num_transcripts << std::endl;
+    MetadataStub metadata = MetadataStub::fromMetadata(tempResult);
+    std::cout << "MetadataStub num_transcripts: " << metadata.transcripts.size() << std::endl;
     STT_FreeMetadata(tempResult);
 
-    return jsonResult;
+    return metadata;
   }
 
   Stream* createStream() {
@@ -263,8 +315,7 @@ EMSCRIPTEN_BINDINGS(coqui_ai_apis) {
       .function("eraseHotWord", &Model::eraseHotWord)
       .function("clearHotWords", &Model::clearHotWords)
       .function("speechToText", &Model::speechToText)
-      .function("speechToTextWithMetadata", &Model::speechToTextWithMetadata,
-                allow_raw_pointers())
+      .function("speechToTextWithMetadata", &Model::speechToTextWithMetadata)
       .function("createStream", &Model::createStream, allow_raw_pointers())
       .function("enableExternalScorer", &Model::enableExternalScorer)
       .function("disableExternalScorer", &Model::disableExternalScorer)
@@ -281,5 +332,21 @@ EMSCRIPTEN_BINDINGS(coqui_ai_apis) {
       .function("finishStream", &Stream::finishStream)
       .function("finishStreamWithMetadata", &Stream::finishStreamWithMetadata);
 
+
+
+  value_object<TokenMetadataStub>("TokenMetadataStub")
+      .field("text", &TokenMetadataStub::text)
+      .field("timestep", &TokenMetadataStub::timestep)
+      .field("start_time", &TokenMetadataStub::start_time);
+
+  value_object<CandidateTranscriptStub>("CandidateTranscriptStub")
+      .field("tokens", &CandidateTranscriptStub::tokens)
+      .field("confidence", &CandidateTranscriptStub::confidence);
+
+  value_object<MetadataStub>("Metadata")
+      .field("transcripts", &MetadataStub::transcripts);
+
   register_vector<short>("VectorShort");
+  register_vector<CandidateTranscriptStub>("CandidateTranscriptStubVector");
+  register_vector<TokenMetadataStub>("TokenMetadataStubVector");
 }
